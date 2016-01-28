@@ -1,7 +1,18 @@
 
 ;; -*- coding: utf-8 -*-
+;; ====开始====
+;; brew tap railwaycat/emacsmacport
+;; brew install emacs-mac
+
+
+;; ====环境====
+
+;; ----init path----
+
 (setq emacs-load-start-time (current-time))
 (add-to-list 'load-path (expand-file-name "~/.emacs.d/lisp"))
+(add-to-list 'load-path (expand-file-name "~/.emacs.d/lhr-lisp"))
+(add-to-list 'load-path (expand-file-name "~/.emacs.d/mylisp"))
 
 ;;----------------------------------------------------------------------------
 ;; Which functionality to enable (use t or nil for true and false)
@@ -36,6 +47,8 @@ We increase this to 16MB by `(my-optimize-gc 16 0.5)` "
 
 (require 'init-modeline)
 (require 'cl-lib)
+
+;; ----init elpa----
 (require 'init-compat)
 (require 'init-utils)
 (require 'init-site-lisp) ;; Must come before elpa, as it may provide package.el
@@ -53,25 +66,48 @@ We increase this to 16MB by `(my-optimize-gc 16 0.5)` "
 ;;    (message "setup-cygwin failed, continue anyway")
 ;;    ))
 
+
+; 这里是开始
+; (require 'org)
+; (org-babel-load-file "~/.emacs.d/all-init.org")
+
+
+
+
 (require 'idle-require)
 (require 'init-elpa)
 (require 'init-exec-path) ;; Set up $PATH
+;; 和 red 在文件级别上进行差异, 然后就是这个 init.el 是综合的, 放在一起.
+;; ====外观====frame
+
+;; ----os, frame----
 (require 'init-frame-hooks)
 ;; any file use flyspell should be initialized after init-spelling.el
 ;; actually, I don't know which major-mode use flyspell.
 (require 'init-spelling)
 (require 'init-xterm)
 (require 'init-gui-frames)
+
+
+;; ----complete and editing ui----
 (require 'init-ido)
 (require 'init-dired)
+
 (require 'init-uniquify)
 (require 'init-ibuffer)
 (require 'init-flymake)
 (require 'init-smex)
 (require 'init-helm)
 (require 'init-hippie-expand)
+;; ----window----
 (require 'init-windows)
+;; ----session----
 (require 'init-sessions)
+
+
+;; ====编辑导航====core editing, complete, navigate
+;; ====开发====dev
+
 (require 'init-git)
 (require 'init-crontab)
 (require 'init-markdown)
@@ -94,8 +130,9 @@ We increase this to 16MB by `(my-optimize-gc 16 0.5)` "
 ;; (require 'init-gist)
 (require 'init-moz)
 (require 'init-gtags)
-;; use evil mode (vi key binding)
+;;evil 原来在这里, 有问题的话移动回来
 (require 'init-evil)
+
 (require 'init-sh)
 (require 'init-ctags)
 (require 'init-bbdb)
@@ -113,11 +150,42 @@ We increase this to 16MB by `(my-optimize-gc 16 0.5)` "
 (require 'init-httpd)
 
 ;; projectile costs 7% startup time
+;; ====evil====
+;; use evil mode (vi key binding)
 
+;; ====最后====finally
+;; ====其他====other
 ;; misc has some crucial tools I need immediately
 (require 'init-misc)
 (require 'init-color-theme)
 (require 'init-emacs-w3m)
+
+;==========
+
+(require 'lhr-org-evil)
+
+;; ====键盘====apply keybindings
+(require 'lhr-elpa)
+(require 'lhr-proxies)
+(require 'lhr-osx-keys)
+
+(require 'lhr-utils)
+(require 'lhr-defun)
+(require 'lhr-keybindings)
+
+(require 'lhr-chinese)
+(require 'lhr-linum)
+(require 'lhr-helm)
+(setq idle-require-message-verbose nil)
+; (require 'setup-clojure-mode)
+
+
+
+
+;==========
+
+
+
 
 ;; {{ idle require other stuff
 (setq idle-require-idle-delay 3)
@@ -155,6 +223,8 @@ We increase this to 16MB by `(my-optimize-gc 16 0.5)` "
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
+ '(bmkp-last-as-first-bookmark-file "/Users/lhr/.emacs.d/.bookmarks.el")
+ '(git-gutter:handled-backends (quote (svn hg git)))
  '(safe-local-variable-values (quote ((lentic-init . lentic-orgel-org-init))))
  '(session-use-package t nil (session)))
 (custom-set-faces
