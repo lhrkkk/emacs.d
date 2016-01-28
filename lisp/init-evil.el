@@ -5,11 +5,16 @@
 (add-to-list 'load-path "~/.emacs.d/site-lisp/evil/lib")
 
 ;; @see https://bitbucket.org/lyro/evil/issue/511/let-certain-minor-modes-key-bindings
-(eval-after-load 'git-timemachine
-  '(progn
-     (evil-make-overriding-map git-timemachine-mode-map 'normal)
-     ;; force update evil keymaps after git-timemachine-mode loaded
-     (add-hook 'git-timemachine-mode-hook #'evil-normalize-keymaps)))
+(defmacro adjust-major-mode-keymap-with-evil (m &optional r)
+  `(eval-after-load (quote ,(if r r m))
+    '(progn
+       (evil-make-overriding-map ,(intern (concat m "-mode-map")) 'normal)
+       ;; force update evil keymaps after git-timemachine-mode loaded
+       (add-hook (quote ,(intern (concat m "-mode-hook"))) #'evil-normalize-keymaps))))
+
+(adjust-major-mode-keymap-with-evil "git-timemachine")
+(adjust-major-mode-keymap-with-evil "browse-kill-ring")
+(adjust-major-mode-keymap-with-evil "etags-select")
 
 (require 'evil)
 
@@ -21,7 +26,7 @@
 ;; enable evil-mode
 (evil-mode 1)
 
-;; {{@see https://github.com/timcharper/evil-surround
+;; {{ @see https://github.com/timcharper/evil-surround for tutorial
 (require 'evil-surround)
 (global-evil-surround-mode 1)
 ;; }}
@@ -51,6 +56,7 @@
 (define-and-bind-text-object "r" "\{\{" "\}\}")
 ;; }}
 
+
 ;; {{ nearby file path as text object,
 ;;      - "vif" to select only basename
 ;;      - "vaf" to select the full path
@@ -60,10 +66,18 @@
 ;;
 ;; tweak evil-filepath-is-nonname to re-define a path
 (defun evil-filepath-is-separator-char (ch)
-  "Check ascii table"
-  (let (rlt)
-    (if (or (= ch 47)
-            (= ch 92))
+  "Check ascii table that CH is slash characters.
+If the character before and after CH is space or tab, CH is NOT slash"
+  (let (rlt prefix-ch postfix-ch)
+    (when (and (> (point) (point-min)) (< (point) (point-max)))
+        (save-excursion
+          (backward-char)
+          (setq prefix-ch (following-char)))
+        (save-excursion
+          (forward-char)
+          (setq postfix-ch (following-char))))
+    (if (and (not (or (= prefix-ch 32) (= postfix-ch 32)))
+             (or (= ch 47) (= ch 92)) )
         (setq rlt t))
     rlt))
 
@@ -117,15 +131,15 @@
     (evil-filepath-calculate-path b e)))
 
 (defun evil-filepath-search-forward-char (fn &optional backward)
-  (let (found rlt (limit (if backward (point-min) (point-max))) out)
+  (let (found rlt (limit (if backward (point-min) (point-max))) out-of-loop)
     (save-excursion
-      (while (not out)
+      (while (not out-of-loop)
         ;; for the char, exit
         (if (setq found (apply fn (list (following-char))))
-            (setq out t)
+            (setq out-of-loop t)
           ;; reach the limit, exit
           (if (= (point) limit)
-              (setq out t)
+              (setq out-of-loop t)
             ;; keep moving
             (if backward (backward-char) (forward-char)))))
       (if found (setq rlt (point))))
@@ -190,6 +204,11 @@
 (evil-escape-mode 1)
 ;; }}
 
+;; {{ evil-space
+(require 'evil-space)
+(evil-space-mode)
+;; }}
+
 ;; Move back the cursor one position when exiting insert mode
 (setq evil-move-cursor-back t)
 
@@ -201,15 +220,18 @@
     ))
 
 ;; (evil-set-initial-state 'org-mode 'emacs)
-;; Remap org-mode meta keys for convenience
+
+;; As a general RULE, mode specific evil leader keys started
+;; with uppercased character or 'g' or special character except "=" and "-"
 (evil-declare-key 'normal org-mode-map
   "gh" 'outline-up-heading
   "gl" 'outline-next-visible-heading
+  "S" 'org-store-link
+  "A" 'org-agenda
   "H" 'org-beginning-of-line ; smarter behaviour on headlines etc.
   "L" 'org-end-of-line ; smarter behaviour on headlines etc.
   "$" 'org-end-of-line ; smarter behaviour on headlines etc.
   "^" 'org-beginning-of-line ; ditto
-  "-" 'org-ctrl-c-minus ; change bullet style
   "<" 'org-metaleft ; out-dent
   ">" 'org-metaright ; indent
   (kbd "TAB") 'org-cycle)
@@ -243,12 +265,18 @@
         (dired-mode . emacs)
         (compilation-mode . emacs)
         (speedbar-mode . emacs)
+        (messages-buffer-mode . normal)
         (magit-commit-mode . normal)
         (magit-diff-mode . normal)
+        (browse-kill-ring-mode . normal)
+        (etags-select-mode . normal)
         (js2-error-buffer-mode . emacs)
         )
       do (evil-set-initial-state mode state))
 
+;; I prefer Emacs way after pressing ":" in evil-mode
+(define-key evil-ex-completion-map (kbd "C-a") 'move-beginning-of-line)
+(define-key evil-ex-completion-map (kbd "C-b") 'backward-char)
 (define-key evil-ex-completion-map (kbd "M-p") 'previous-complete-history-element)
 (define-key evil-ex-completion-map (kbd "M-n") 'next-complete-history-element)
 
@@ -259,6 +287,8 @@
 (define-key evil-normal-state-map (kbd "M-y") 'browse-kill-ring)
 (define-key evil-normal-state-map (kbd "j") 'evil-next-visual-line)
 (define-key evil-normal-state-map (kbd "k") 'evil-previous-visual-line)
+(define-key evil-normal-state-map (kbd "C-]") 'etags-select-find-tag-at-point)
+(define-key evil-visual-state-map (kbd "C-]") 'etags-select-find-tag-at-point)
 
 (require 'evil-matchit)
 (global-evil-matchit-mode 1)
@@ -266,7 +296,9 @@
 ;; press ",xx" to expand region
 ;; then press "z" to contract, "x" to expand
 (eval-after-load "evil"
-  '(setq expand-region-contract-fast-key "z"))
+  '(progn
+     (setq expand-region-contract-fast-key "z")
+     ))
 
 ;; I learn this trick from ReneFroger, need latest expand-region
 ;; @see https://github.com/redguardtoo/evil-matchit/issues/38
@@ -278,9 +310,15 @@
 (global-set-key (kbd "C-r") 'undo-tree-redo)
 
 ;; My frequently used commands are listed here
+;; For example, for line like `"ef" 'end-of-defun`
+;;   You can either press `,ef` or `M-x end-of-defun` to execute it
 (setq evil-leader/leader ",")
 (require 'evil-leader)
 (evil-leader/set-key
+  ;; {{ only usable in GUI emacs
+  "=" 'increase-default-font-height
+  "-" 'decrease-default-font-height
+  ;; }}
   "bf" 'beginning-of-defun
   "bu" 'backward-up-list
   "bb" 'back-to-previous-buffer
@@ -297,7 +335,6 @@
   "em" 'erase-message-buffer
   "eb" 'eval-buffer
   "sd" 'sudo-edit
-  "sr" 'evil-surround-region
   "sc" 'shell-command
   "ee" 'eval-expression
   "aa" 'copy-to-x-clipboard ; used frequently
@@ -318,8 +355,9 @@
   "dj" 'dired-jump ;; open the dired from current file
   "ff" 'toggle-full-window ;; I use WIN+F in i3
   "ip" 'find-file-in-project
-  "is" 'find-file-in-project-by-selected
-  "tm" 'get-term
+  "kk" 'find-file-in-project-by-selected
+  "fd" 'find-directory-in-project-by-selected
+  "trm" 'get-term
   "tff" 'toggle-frame-fullscreen
   "tfm" 'toggle-frame-maximized
   ;; "ci" 'evilnc-comment-or-uncomment-lines
@@ -332,14 +370,21 @@
   "rb" 'evilmr-replace-in-buffer
   "tt" 'evilmr-tag-selected-region ;; recommended
   "rt" 'evilmr-replace-in-tagged-region ;; recommended
-  "yy" 'cb-switch-between-controller-and-view
   "tua" 'artbollocks-mode
-  "yu" 'cb-get-url-from-controller
-  "ht" 'helm-etags-select ;; better than find-tag (C-])
-  "hm" 'helm-bookmarks
-  "hb" 'helm-back-to-last-point
-  "hh" 'browse-kill-ring
-  "cg" 'helm-ls-git-ls
+  "cby" 'cb-switch-between-controller-and-view
+  "cbu" 'cb-get-url-from-controller
+  "ht" 'etags-select-find-tag-at-point ;; better than find-tag (C-])
+  "hp" 'etags-select-find-tag
+  "hm" 'counsel-bookmark-goto
+  "yy" 'browse-kill-ring
+  "gf" 'counsel-git-find-file
+  "gl" 'counsel-git-grep-yank-line
+  "gg" 'counsel-git-grep ; quickest grep should be easy to press
+  "gm" 'counsel-git-find-my-file
+  "rjs" 'run-js
+  "rmz" 'run-mozilla
+  "rpy" 'run-python
+  "rlu" 'run-lua
   "ud" 'my-gud-gdb
   "uk" 'gud-kill-yes
   "ur" 'gud-remove
@@ -352,54 +397,61 @@
   "ui" 'gud-stepi
   "uc" 'gud-cont
   "uf" 'gud-finish
+  "tci" 'toggle-company-ispell
   "kb" 'kill-buffer-and-window ;; "k" is preserved to replace "C-g"
   "it" 'issue-tracker-increment-issue-id-under-cursor
   "ls" 'highlight-symbol
   "lq" 'highlight-symbol-query-replace
   "ln" 'highlight-symbol-nav-mode ; use M-n/M-p to navigation between symbols
   "bm" 'pomodoro-start ;; beat myself
-  "im" 'helm-imenu
+  "im" 'counsel-imenu-goto
   "ii" 'ido-imenu
   "ij" 'rimenu-jump
   "." 'evil-ex
   ;; @see https://github.com/pidu/git-timemachine
   ;; p: previous; n: next; w:hash; W:complete hash; g:nth version; q:quit
-  "gm" 'git-timemachine-toggle
+  "tmt" 'git-timemachine-toggle
   ;; toggle overview,  @see http://emacs.wordpress.com/2007/01/16/quick-and-dirty-code-folding/
   "ov" 'my-overview-of-current-buffer
   "or" 'open-readme-in-git-root-directory
   "c$" 'org-archive-subtree ; `C-c $'
-  "c<" 'org-promote-subtree ; `C-c C-<'
-  "c>" 'org-demote-subtree ; `C-c C->'
+  ;; org-do-demote/org-do-premote support selected region
+  "c<" 'org-do-promote ; `C-c C-<'
+  "c>" 'org-do-demote ; `C-c C->'
   "cam" 'org-tags-view ; `C-c a m': search items in org-file-apps by tag
   "cxi" 'org-clock-in ; `C-c C-x C-i'
   "cxo" 'org-clock-out ; `C-c C-x C-o'
   "cxr" 'org-clock-report ; `C-c C-x C-r'
   "mq" 'lookup-doc-in-man
-  "sg" 'w3m-google-by-filetype
-  "sf" 'w3m-search-financial-dictionary
-  "sq" 'w3m-stackoverflow-search
-  "sj" 'w3m-search-js-api-mdn
-  "sa" 'w3m-java-search
-  "sh" 'w3mext-hacker-search ; code search in all engines with firefox
-  "gg" 'my-vc-git-grep
+  "sgg" 'w3m-google-search
+  "sgf" 'w3m-google-by-filetype
+  "sgd" 'w3m-search-financial-dictionary
+  "sgq" 'w3m-stackoverflow-search
+  "sgj" 'w3m-search-js-api-mdn
+  "sga" 'w3m-java-search
+  "sgh" 'w3mext-hacker-search ; code search in all engines with firefox
+  "qq" 'my-grep
   "gss" 'git-gutter:set-start-revision
   "gsh" 'git-gutter-reset-to-head-parent
   "gsr" 'git-gutter-reset-to-default
-  "hr" 'helm-recentf
   "xc" 'save-buffers-kill-terminal
-  "rr" 'steve-ido-choose-from-recentf ;; more quick than helm
+  "rr" 'counsel-recentf-goto ; more quick than helm
+  "rh" 'counsel-yank-bash-history ; bash history command => yank-ring
+  "dfa" 'diff-region-tag-selected-as-a
+  "dfb" 'diff-region-compare-with-b
   "di" 'evilmi-delete-items
   "si" 'evilmi-select-items
   "jb" 'js-beautify
-  "jp" 'jsons-print-path
+  "jpp" 'js2-print-json-path
   "se" 'string-edit-at-point
   "xe" 'eval-last-sexp
   "x0" 'delete-window
   "x1" 'delete-other-windows
   "x2" 'split-window-vertically
   "x3" 'split-window-horizontally
-  "xr" 'rotate-windows
+  "xrw" 'rotate-windows
+  "xru" 'undo-tree-save-state-to-register ; C-x r u
+  "xrU" 'undo-tree-restore-state-from-register ; C-x r U
   "xt" 'toggle-window-split
   "su" 'winner-undo
   "xu" 'winner-undo
@@ -421,8 +473,7 @@
   "rnl" 'rinari-find-log
   "rno" 'rinari-console
   "rnt" 'rinari-find-test
-  "ss" 'swiper ; http://oremacs.com/2015/03/25/swiper-0.2.0/ for guide
-  "st" 'swiper-the-thing
+  "ss" 'swiper-the-thing ; http://oremacs.com/2015/03/25/swiper-0.2.0/ for guide
   "hst" 'hs-toggle-fold
   "hsa" 'hs-toggle-fold-all
   "hsh" 'hs-hide-block
@@ -447,7 +498,6 @@
   ;; recommended in html
   "md" 'mc/mark-all-like-this-dwim
   "otl" 'org-toggle-link-display
-  "oc" 'occur
   "om" 'toggle-org-or-message-mode
   "ut" 'undo-tree-visualize
   "ar" 'align-regexp
@@ -478,11 +528,8 @@
   "ri" 'yari-helm
   "vv" 'scroll-other-window
   "vu" 'scroll-other-window-up
-  "vr" 'vr/replace
-  "vq" 'vr/query-replace
-  "vm" 'vr/mc-mark
-  "js" 'w3mext-search-js-api-mdn
   "jde" 'js2-display-error-list
+  "jne" 'js2-next-error
   "jte" 'js2-mode-toggle-element
   "jtf" 'js2-mode-toggle-hide-functions
   "jjeo" 'js2r-expand-object
@@ -529,6 +576,8 @@
   "xvl" 'vc-print-log
   "xvb" 'git-messenger:popup-message
   "xv=" 'git-gutter:popup-hunk
+  "hh" 'cliphist-paste-item
+  "yu" 'cliphist-select-item
   "nn" 'my-goto-next-hunk
   "pp" 'my-goto-previous-hunk
   "xnn" 'narrow-or-widen-dwim
@@ -536,14 +585,8 @@
   "xnd" 'narrow-to-defun
   "xnr" 'narrow-to-region
   "ycr" 'my-yas-reload-all
-  "zc" 'wg-create-workgroup
-  "zk" 'wg-kill-workgroup
-  "zv" 'my-wg-swich-to-workgroup
-  "zj" 'my-wg-switch-to-workgroup-at-index
-  "zs" 'my-wg-save-session
-  "zb" 'wg-switch-to-buffer
-  "zwr" 'wg-redo-wconfig-change
-  "zws" 'wg-save-wconfig
+  "wgt" 'wg-create-workgroup
+  "wgg" 'my-wg-switch-workgroup
   "wf" 'popup-which-function)
 
 ;; change mode-line color by evil state

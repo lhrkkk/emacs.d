@@ -22,6 +22,19 @@
   (yas-compile-directory (file-truename "~/.emacs.d/snippets"))
   (yas-reload-all))
 
+(defun my-yas-field-to-statement(str sep)
+  "If STR=='a.b.c' and SEP=' && ',
+'a.b.c' => 'a && a.b && a.b.c'"
+  (let ((a (split-string str "\\.")) rlt)
+    (mapconcat 'identity
+               (mapcar (lambda (elem)
+                         (cond
+                          (rlt
+                           (setq rlt (concat rlt "." elem)))
+                          (t
+                           (setq rlt elem)))) a)
+               sep)))
+
 (defun my-yas-get-first-name-from-to-field ()
   (let ((rlt "AGENT_NAME") str)
     (save-excursion
@@ -68,7 +81,6 @@
      ;; (message "yas-snippet-dirs=%s" (mapconcat 'identity yas-snippet-dirs ":"))
 
      ;; default hotkey `C-c C-s` is still valid
-     ;; (global-set-key (kbd "C-c l") 'yas-insert-snippet)
      ;; give yas-dropdown-prompt in yas/prompt-functions a chance
      (require 'dropdown-list)
      (setq yas-prompt-functions '(yas-dropdown-prompt

@@ -1,12 +1,47 @@
+;; {{ swiper&ivy-mode
+(autoload 'ivy-recentf "ivy" "" t)
+(autoload 'ivy-read "ivy")
+(autoload 'swiper "swiper" "" t)
+
+(defun swiper-the-thing ()
+  (interactive)
+  (swiper (if (region-active-p)
+              (buffer-substring-no-properties (region-beginning) (region-end))
+            (thing-at-point 'symbol))))
+;; }}
+
+;; {{ shell and conf
+(add-to-list 'auto-mode-alist '("\\.[^b][^a][a-zA-Z]*rc$" . conf-mode))
+(add-to-list 'auto-mode-alist '("\\.aspell\\.en\\.pws\\'" . conf-mode))
+(add-to-list 'auto-mode-alist '("\\.meta\\'" . conf-mode))
+(add-to-list 'auto-mode-alist '("\\.?muttrc\\'" . conf-mode))
+(add-to-list 'auto-mode-alist '("\\.ctags\\'" . conf-mode))
+(add-to-list 'auto-mode-alist '("\\.mailcap\\'" . conf-mode))
+;; }}
+
+;; salesforce
+(autoload 'apex-mode "apex-mode" nil t)
+(add-to-list 'auto-mode-alist '("\\.cls\\'" . apex-mode))
+(add-to-list 'auto-mode-alist '("\\.trigger\\'" . apex-mode))
+;; java
+(add-to-list 'auto-mode-alist '("\\.aj\\'" . java-mode))
+;; makefile
+(add-to-list 'auto-mode-alist '("\\.ninja$" . makefile-gmake-mode))
+
+;; {{ support MY packages which are not included in melpa
+(autoload 'wxhelp-browse-class-or-api "wxwidgets-help" "" t)
+(autoload 'issue-tracker-increment-issue-id-under-cursor "issue-tracker" "" t)
+(autoload 'issue-tracker-insert-issue-list "issue-tracker" "" t)
+(autoload 'elpamr-create-mirror-for-installed "elpa-mirror" "" t)
+(autoload 'org2nikola-export-subtree "org2nikola" "" t)
+(autoload 'org2nikola-rerender-published-posts "org2nikola" "" t)
+(setq org2nikola-use-verbose-metadata t) ; for nikola 7.7+
+;; }}
+
 (define-key global-map (kbd "RET") 'newline-and-indent)
 
 ;; M-x without meta
 (global-set-key (kbd "C-x C-m") 'execute-extended-command)
-(global-set-key (kbd "C-.") 'set-mark-command)
-(global-set-key (kbd "C-x C-.") 'pop-global-mark)
-
-;; C#
-(add-to-list 'auto-mode-alist '("\\.cs$" . csharp-mode))
 
 ;; {{ isearch
 ;; Use regex to search by default
@@ -31,7 +66,7 @@
               set-mark-command-repeat-pop t
               tooltip-delay 1.5
               ;; void problems with crontabs, etc.
-              ;; require-final-newline t ; bad idea, could accidently edit others' code
+              ;; require-final-newline t ; bad idea, could accidentally edit others' code
               truncate-lines nil
               truncate-partial-width-windows nil
               ;; visible-bell has some issue
@@ -44,10 +79,10 @@
 
 
 ;; {{ find-file-in-project (ffip)
-(autoload 'ivy-read "ivy")
 (autoload 'find-file-in-project "find-file-in-project" "" t)
 (autoload 'find-file-in-project-by-selected "find-file-in-project" "" t)
 (autoload 'ffip-get-project-root-directory "find-file-in-project" "" t)
+(setq ffip-match-path-instead-of-filename t)
 
 (defun neotree-project-dir ()
   "Open NeoTree using the git root."
@@ -60,14 +95,30 @@
           (neotree-find file-name))
       (message "Could not find git project root."))))
 
-(defun my-vc-git-grep ()
+(defvar my-grep-extra-opts
+  "--exclude-dir=.git --exclude-dir=.bzr --exclude-dir=.svn"
+  "Extra grep options passed to `my-grep'")
+
+(defun my-grep ()
+  "Grep file at project root directory or current directory"
   (interactive)
-  (let ((re (if (region-active-p)
-                (buffer-substring-no-properties (region-beginning) (region-end))
-              (read-string "Grep pattern: ")))
-        (root (ffip-get-project-root-directory)))
-    (if root (vc-git-grep re "*" root))
-    ))
+  (let ((keyword (if (region-active-p)
+                     (buffer-substring-no-properties (region-beginning) (region-end))
+                   (read-string "Enter grep pattern: ")))
+        cmd collection val 1st root)
+
+    (let ((default-directory (setq root (or (ffip-get-project-root-directory) default-directory))))
+      (setq cmd (format "%s -rsn %s \"%s\""
+                        grep-program my-grep-extra-opts keyword))
+      (when (and (setq collection (split-string
+                                   (shell-command-to-string cmd)
+                                   "\n"
+                                   t))
+                 (setq val (ivy-read (format "matching \"%s\" at %s:" keyword root) collection))))
+      (setq lst (split-string val ":"))
+      (find-file (car lst))
+      (goto-char (point-min))
+      (forward-line (1- (string-to-number (cadr lst)))))))
 ;; }}
 
 ;; {{ groovy-mode
@@ -92,14 +143,12 @@
 ;; {{ gradle
 (defun my-run-gradle-in-shell (cmd)
   (interactive "sEnter a string:")
-  (let ((old-dir default-directory)
-        (root-dir (locate-dominating-file default-directory
+  (let ((root-dir (locate-dominating-file default-directory
                                           "build.gradle")))
-    (message "root-dir=%s cmd=%s" root-dir cmd)
-    (when root-dir
-      (cd root-dir)
-      (shell-command (concat "gradle " cmd "&"))
-      (cd old-dir))))
+    (if root-dir
+      (let ((default-directory root-dir))
+        (shell-command (concat "gradle " cmd "&"))))
+    ))
 ;; }}
 
 ;; {{ crontab
@@ -126,6 +175,12 @@
 
 ;; }}
 
+;; {{ bookmark
+;; use my own bmk if it exists
+(if (file-exists-p (file-truename "~/.emacs.bmk"))
+    (setq bookmark-file (file-truename "~/.emacs.bmk")))
+;; }}
+
 (defun insert-lorem ()
   (interactive)
   (insert "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Pellentesque sem mauris, aliquam vel interdum in, faucibus non libero. Asunt in anim uis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in anim id est laborum. Allamco laboris nisi ut aliquip ex ea commodo consequat."))
@@ -140,16 +195,9 @@
 
 (defun lookup-doc-in-man ()
   (interactive)
-  (man (concat "-k " (thing-at-point 'symbol))))
-
-;; {{ swiper
-(autoload 'swiper "swiper" "" t)
-(defun swiper-the-thing ()
-  (interactive)
-  (swiper (if (region-active-p)
-              (buffer-substring-no-properties (region-beginning) (region-end))
-            (thing-at-point 'symbol))))
-;; }}
+  (man (concat "-k " (if (region-active-p)
+       (buffer-substring-no-properties (region-beginning) (region-end))
+      (thing-at-point 'symbol)))))
 
 ;; @see http://blog.binchen.org/posts/effective-code-navigation-for-web-development.html
 ;; don't let the cursor go into minibuffer prompt
@@ -194,22 +242,11 @@
 (setq guide-key/idle-delay 0.5)
 ;; }}
 
-;; {{expand-region.el
-;; if emacs-nox, use C-@, else, use C-2;
-(if window-system
-  (progn
-    (define-key global-map (kbd "C-2") 'er/expand-region)
-    (define-key global-map (kbd "C-M-2") 'er/contract-region)
-    )
-  (define-key global-map (kbd "C-@") 'er/expand-region)
-  (define-key global-map (kbd "C-M-@") 'er/contract-region))
-;; }}
-
 (defun generic-prog-mode-hook-setup ()
   (unless (is-buffer-file-temp)
-	;; highlight FIXME/BUG/TODO in comment
-	(require 'fic-mode)
-	(fic-mode 1)
+    ;; fic-mode has performance issue on 5000 line C++, we can always use swiper instead
+    ;; don't spell check double words
+    (setq flyspell-check-doublon nil)
 	;; enable for all programming modes
 	;; http://emacsredux.com/blog/2013/04/21/camelcase-aware-editing/
 	(subword-mode)
@@ -217,8 +254,7 @@
 	;; eldoc, show API doc in minibuffer echo area
 	(turn-on-eldoc-mode)
 	;; show trailing spaces in a programming mod
-	(setq show-trailing-whitespace t)
-	))
+	(setq show-trailing-whitespace t)))
 
 (add-hook 'prog-mode-hook 'generic-prog-mode-hook-setup)
 
@@ -298,10 +334,6 @@ buffer is not visiting a file."
 ;; edit confluence wiki
 (autoload 'confluence-edit-mode "confluence-edit" "enable confluence-edit-mode" t)
 (add-to-list 'auto-mode-alist '("\\.wiki\\'" . confluence-edit-mode))
-
-;; {{string-edit.el
-(autoload 'string-edit-at-point "string-edit" "enable string-edit-mode" t)
-;; }}
 
 (defun erase-specific-buffer (num buf-name)
   (let ((message-buffer (get-buffer buf-name))
@@ -391,19 +423,17 @@ buffer is not visiting a file."
 
 (setq system-time-locale "C")
 
-
-;; {{ imenu
-(setq imenu-max-item-length 128)
-(setq imenu-max-item-length 64)
-;; }}
+(setq imenu-max-item-length 256)
 
 ;; {{ recentf-mode
 (setq recentf-keep '(file-remote-p file-readable-p))
-(setq recentf-max-saved-items 1000
+(setq recentf-max-saved-items 2048
       recentf-exclude '("/tmp/"
                         "/ssh:"
                         "/sudo:"
-                        "/home/[a-z]\+/\\."))
+                        ;; ~/.emacs.d/**/*.el included
+                        ;; "/home/[a-z]\+/\\.[a-df-z]" ; configuration file should not be excluded
+                        ))
 ;; }}
 
 ;; {{ popup functions
@@ -467,20 +497,29 @@ buffer is not visiting a file."
 ;; {{ avy, jump between texts, like easymotion in vim
 ;; @see http://emacsredux.com/blog/2015/07/19/ace-jump-mode-is-dead-long-live-avy/ for more tips
 ;; emacs key binding, copied from avy website
-(global-set-key (kbd "C-:") 'avy-goto-char)
 ;; evil, my favorite
 (eval-after-load "evil"
   '(progn
      ;; press "d " to delete to the word
-     (define-key evil-motion-state-map (kbd "SPC") #'avy-goto-subword-1)
-     (define-key evil-normal-state-map (kbd "SPC") 'avy-goto-subword-1)))
+     (define-key evil-motion-state-map (kbd ";") #'avy-goto-subword-1)
+     (define-key evil-normal-state-map (kbd ";") 'avy-goto-subword-1)))
 ;; dired
 (eval-after-load "dired"
   '(progn
-     (define-key dired-mode-map (kbd "SPC") 'avy-goto-subword-1)))
+     (define-key dired-mode-map (kbd ";") 'avy-goto-subword-1)))
 ;; }}
 
-;; {{ @see http://emacs.stackexchange.com/questions/14129/which-keyboard-shortcut-to-use-for-navigating-out-of-a-string
+;; ANSI-escape coloring in compilation-mode
+;; {{ http://stackoverflow.com/questions/13397737/ansi-coloring-in-compilation-mode
+(ignore-errors
+  (require 'ansi-color)
+  (defun my-colorize-compilation-buffer ()
+    (when (eq major-mode 'compilation-mode)
+      (ansi-color-apply-on-region compilation-filter-start (point-max))))
+  (add-hook 'compilation-filter-hook 'my-colorize-compilation-buffer))
+;; }}
+
+;; @see http://emacs.stackexchange.com/questions/14129/which-keyboard-shortcut-to-use-for-navigating-out-of-a-string
 (defun font-face-is-similar (f1 f2)
   (let (rlt)
     ;; (message "f1=%s f2=%s" f1 f2)
@@ -496,6 +535,17 @@ buffer is not visiting a file."
           (setq rlt t)))
     rlt))
 
+;; {{ tramp setup
+;; @see http://www.quora.com/Whats-the-best-way-to-edit-remote-files-from-Emacs
+(setq tramp-default-method "ssh")
+(setq tramp-auto-save-directory "~/.backups/tramp/")
+(setq tramp-chunksize 8192)
+;; @see https://github.com/syl20bnr/spacemacs/issues/1921
+(setq tramp-ssh-controlmaster-options
+      "-o ControlMaster=auto -o ControlPath='tramp.%%C' -o ControlPersist=no")
+;; }}
+
+;; {{
 (defun goto-edge-by-comparing-font-face (&optional step)
 "Goto either the begin or end of string/comment/whatever.
 If step is -1, go backward."
@@ -516,4 +566,105 @@ If step is -1, go backward."
     ;; (message "rlt=%s found=%s" rlt found)
     (goto-char rlt)))
 ;; }}
+
+(defun my-minibuffer-setup-hook ()
+  ;; Use paredit in the minibuffer
+  (conditionally-paredit-mode 1)
+  (local-set-key (kbd "M-y") 'paste-from-x-clipboard)
+  (setq gc-cons-threshold most-positive-fixnum))
+
+(defun my-minibuffer-exit-hook ()
+  ;; evil-mode also use minibuf
+  (conditionally-paredit-mode -1)
+  (setq gc-cons-threshold best-gc-cons-threshold))
+
+;; @see http://bling.github.io/blog/2016/01/18/why-are-you-changing-gc-cons-threshold/
+(add-hook 'minibuffer-setup-hook #'my-minibuffer-setup-hook)
+(add-hook 'minibuffer-exit-hook #'my-minibuffer-exit-hook)
+
+(defun string-edit-at-point-hook-setup ()
+  (web-mode))
+(add-hook 'string-edit-at-point-hook 'string-edit-at-point-hook-setup)
+
+;; Diff two regions
+;; Step 1: Select a region and `M-x diff-region-tag-selected-as-a'
+;; Step 2: Select another region and `M-x diff-region-compare-with-b'
+(defun diff-region-format-region-boundary (b e)
+  "Make sure lines are selected and B is less than E"
+  (let (tmp rlt)
+    ;; swap b e, make sure b < e
+    (when (> b e)
+      (setq tmp b)
+      (setq b e)
+      (set e tmp))
+
+    ;; select lines
+    (save-excursion
+      ;; Another workaround for evil-visual-line bug:
+      ;; In evil-mode, if we use hotkey V or `M-x evil-visual-line` to select line,
+      ;; the (line-beginning-position) of the line which is after the last selected
+      ;; line is always (region-end)! Don't know why.
+      (if (and (> e b)
+               (save-excursion (goto-char e) (= e (line-beginning-position)))
+               (boundp 'evil-state) (eq evil-state 'visual))
+          (setq e (1- e)))
+      (goto-char b)
+      (setq b (line-beginning-position))
+      (goto-char e)
+      (setq e (line-end-position)))
+    (setq rlt (list b e))
+    rlt))
+
+(defun diff-region-tag-selected-as-a ()
+  "Select a region to compare"
+  (interactive)
+  (when (region-active-p)
+    (let (tmp buf)
+      ;; select lines
+      (setq tmp (diff-region-format-region-boundary (region-beginning) (region-end)))
+      (setq buf (get-buffer-create "*Diff-regionA*"))
+      (save-current-buffer
+        (set-buffer buf)
+        (erase-buffer))
+      (append-to-buffer buf (car tmp) (cadr tmp))))
+  (message "Now select other region to compare and run `diff-region-compare-with-b`"))
+
+(defun diff-region-compare-with-b ()
+  "Compare current region with region selected by `diff-region-tag-selected-as-a' "
+  (interactive)
+  (if (region-active-p)
+      (let (rlt-buf
+            diff-output
+            (fa (make-temp-file (expand-file-name "scor"
+                                                  (or small-temporary-file-directory
+                                                      temporary-file-directory))))
+            (fb (make-temp-file (expand-file-name "scor"
+                                                  (or small-temporary-file-directory
+                                                      temporary-file-directory)))))
+        (when fb
+          (setq tmp (diff-region-format-region-boundary (region-beginning) (region-end)))
+          (write-region (car tmp) (cadr tmp) fb))
+
+        (setq rlt-buf (get-buffer-create "*Diff-region-output*"))
+        (when (and fa (file-exists-p fa) fb (file-exists-p fb))
+          (save-current-buffer
+            (set-buffer (get-buffer-create "*Diff-regionA*"))
+            (write-region (point-min) (point-max) fa))
+          (setq diff-output (shell-command-to-string (format "diff -Nabur %s %s" fa fb)))
+          ;; show the diff output
+          (if (string= diff-output "")
+              (message "Two regions are SAME!")
+              (save-current-buffer
+                (switch-to-buffer-other-window rlt-buf)
+                (set-buffer rlt-buf)
+                (erase-buffer)
+                (insert diff-output)
+                (diff-mode))))
+
+        (if (and fa (file-exists-p fa))
+            (delete-file fa))
+        (if (and fb (file-exists-p fb))
+            (delete-file fb)))
+    (message "Please select region at first!")))
+
 (provide 'init-misc)

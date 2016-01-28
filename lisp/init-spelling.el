@@ -28,8 +28,7 @@
         (setq rlt (string-match "^\\(value\\|class\\|ng[A-Za-z0-9-]*\\)$" thing))
         rlt))
      (t t))
-    rlt
-    ))
+    rlt))
 
 (put 'web-mode 'flyspell-mode-predicate 'web-mode-flyspell-verify)
 
@@ -60,8 +59,7 @@
            (setq args (append args '("--run-together" "--run-together-limit=16" "--run-together-min=2")))))
         ((string-match "hunspell$" ispell-program-name)
          (setq args nil))))
-    args
-    ))
+    args))
 
 ;; Aspell Setup (recommended):
 ;; Skipped because it's easy.
@@ -124,31 +122,33 @@
 ;; Add auto spell-checking in comments for all programming language modes
 ;; if and only if there is enough memory
 ;; You can use prog-mode-hook instead.
-(if (and (not *no-memory*) ispell-program-name)
-  (dolist (hook '(lisp-mode-hook
-                  emacs-lisp-mode-hook
-                  scheme-mode-hook
-                  clojure-mode-hook
-                  ruby-mode-hook
-                  yaml-mode
-                  python-mode-hook
-                  shell-mode-hook
-                  php-mode-hook
-                  css-mode-hook
-                  haskell-mode-hook
-                  caml-mode-hook
-                  c++-mode-hook
-                  c-mode-hook
-                  lua-mode-hook
-                  crontab-mode-hook
-                  perl-mode-hook
-                  tcl-mode-hook
-                  js2-mode-hook))
-    (add-hook hook 'flyspell-prog-mode)))
+(defun can-enable-flyspell-mode ()
+  (and (not *no-memory*)
+           ispell-program-name
+           (executable-find ispell-program-name)))
+
+(defun enable-flyspell-mode-conditionally ()
+  (if (and (not *no-memory*)
+           ispell-program-name
+           (executable-find ispell-program-name))
+      (flyspell-mode 1)))
+
+(if (can-enable-flyspell-mode)
+    (add-hook 'prog-mode-hook 'flyspell-prog-mode))
 
 
 ;; you can also use "M-x ispell-word" or hotkey "M-$". It pop up a multiple choice
 ;; @see http://frequal.com/Perspectives/EmacsTip03-FlyspellAutoCorrectWord.html
 (global-set-key (kbd "C-c s") 'flyspell-auto-correct-word)
+
+;; {{ avoid spell-checking doublon (double word) in certain major modes
+(defvar flyspell-check-doublon t
+  "Check doublon (double word) when calling `flyspell-highlight-incorrect-region'.")
+ (make-variable-buffer-local 'flyspell-check-doublon)
+
+(defadvice flyspell-highlight-incorrect-region (around flyspell-highlight-incorrect-region-hack activate)
+  (if (or flyspell-check-doublon (not (eq 'doublon (ad-get-arg 2))))
+      ad-do-it))
+;; }}
 
 (provide 'init-spelling)

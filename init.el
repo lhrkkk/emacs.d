@@ -1,4 +1,3 @@
-
 ;; -*- coding: utf-8 -*-
 ;; ====开始====
 ;; brew tap railwaycat/emacsmacport
@@ -8,6 +7,11 @@
 ;; ====环境====
 
 ;; ----init path----
+
+;(defvar best-gc-cons-threshold gc-cons-threshold "Best default gc threshold value. Should't be too big.")
+(defvar best-gc-cons-threshold 4000000 "Best default gc threshold value. Should't be too big.")
+;; don't GC during startup to save time
+(setq gc-cons-threshold most-positive-fixnum)
 
 (setq emacs-load-start-time (current-time))
 (add-to-list 'load-path (expand-file-name "~/.emacs.d/lisp"))
@@ -19,31 +23,16 @@
 ;;----------------------------------------------------------------------------
 (setq *macbook-pro-support-enabled* t)
 (setq *is-a-mac* (eq system-type 'darwin))
-(setq *is-carbon-emacs* (and *is-a-mac* (eq window-system 'mac)))
-(setq *is-cocoa-emacs* (and *is-a-mac* (eq window-system 'ns)))
-(setq *win32* (eq system-type 'windows-nt) )
+(setq *win64* (eq system-type 'windows-nt) )
 (setq *cygwin* (eq system-type 'cygwin) )
 (setq *linux* (or (eq system-type 'gnu/linux) (eq system-type 'linux)) )
 (setq *unix* (or *linux* (eq system-type 'usg-unix-v) (eq system-type 'berkeley-unix)) )
-(setq *linux-x* (and window-system *linux*) )
-(setq *xemacs* (featurep 'xemacs) )
-(setq *emacs24* (and (not *xemacs*) (or (>= emacs-major-version 24))) )
+(setq *emacs24* (and (not (featurep 'xemacs)) (or (>= emacs-major-version 24))) )
 (setq *no-memory* (cond
                    (*is-a-mac*
                     (< (string-to-number (nth 1 (split-string (shell-command-to-string "sysctl hw.physmem")))) 4000000000))
                    (*linux* nil)
                    (t nil)))
-
-;;----------------------------------------------------------------------------
-;; Less GC, more memory
-;;----------------------------------------------------------------------------
-(defun my-optimize-gc (NUM PER)
-"By default Emacs will initiate GC every 0.76 MB allocated (gc-cons-threshold == 800000).
-@see http://www.gnu.org/software/emacs/manual/html_node/elisp/Garbage-Collection.html
-We increase this to 16MB by `(my-optimize-gc 16 0.5)` "
-  (setq-default gc-cons-threshold (* 1024 1024 NUM)
-                gc-cons-percentage PER))
-
 
 (require 'init-modeline)
 (require 'cl-lib)
@@ -53,9 +42,9 @@ We increase this to 16MB by `(my-optimize-gc 16 0.5)` "
 (require 'init-utils)
 (require 'init-site-lisp) ;; Must come before elpa, as it may provide package.el
 
-;; win32 auto configuration, assuming that cygwin is installed at "c:/cygwin"
+;; Windows configuration, assuming that cygwin is installed at "c:/cygwin"
 ;; (condition-case nil
-;;     (when *win32*
+;;     (when *win64*
 ;;       ;; (setq cygwin-mount-cygwin-bin-directory "c:/cygwin/bin")
 ;;       (setq cygwin-mount-cygwin-bin-directory "c:/cygwin64/bin")
 ;;       (require 'setup-cygwin)
@@ -98,6 +87,7 @@ We increase this to 16MB by `(my-optimize-gc 16 0.5)` "
 (require 'init-flymake)
 (require 'init-smex)
 (require 'init-helm)
+(require 'init-ivy)
 (require 'init-hippie-expand)
 ;; ----window----
 (require 'init-windows)
@@ -157,8 +147,12 @@ We increase this to 16MB by `(my-optimize-gc 16 0.5)` "
 ;; ====其他====other
 ;; misc has some crucial tools I need immediately
 (require 'init-misc)
-(require 'init-color-theme)
+
+;; comment below line if you want to setup color theme in your own way
+(if (or (display-graphic-p) (string-match-p "256color"(getenv "TERM"))) (require 'init-color-theme))
+
 (require 'init-emacs-w3m)
+(require 'init-hydra)
 
 ;==========
 
@@ -193,7 +187,6 @@ We increase this to 16MB by `(my-optimize-gc 16 0.5)` "
                              init-which-func
                              init-fonts
                              init-hs-minor-mode
-                             init-stripe-buffer
                              init-textile
                              init-csv
                              init-writting
@@ -233,6 +226,8 @@ We increase this to 16MB by `(my-optimize-gc 16 0.5)` "
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  '(window-numbering-face ((t (:foreground "DeepPink" :underline "DeepPink" :weight bold))) t))
+
+(setq gc-cons-threshold best-gc-cons-threshold)
 ;;; Local Variables:
 ;;; no-byte-compile: t
 ;;; End:

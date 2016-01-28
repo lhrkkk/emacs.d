@@ -1,37 +1,47 @@
 ;;; chinese-pyim-pymap.el --- Pinyin map used by chinese-pyim
 
-;;; Header:
-;;
+;; * Header
+
 ;; The content of this file is generated from "pinyin.map" which is
 ;; included in a free package called CCE.  It is available at:
-;;
-;;	http://ftp.debian.org/debian/dists/potato/main
-;;		/source/utils/cce_0.36.orig.tar.gz
-;;
+
+;;      http://ftp.debian.org/debian/dists/potato/main
+;;          /source/utils/cce_0.36.orig.tar.gz
+
 ;; This package contains the following copyright notice.
-;;
-;;
-;;             Copyright (C) 1999, Rui He, herui@cs.duke.edu
-;;
-;;
-;;                  CCE(Console Chinese Environment) 0.32
-;;
+
+;;         Copyright (C) 1999, Rui He, herui@cs.duke.edu
+
+;;             CCE(Console Chinese Environment) 0.32
+
 ;; CCE is free software; you can redistribute it and/or modify it under the
 ;; terms of the GNU General Public License as published by the Free Software
 ;; Foundation; either version 1, or (at your option) any later version.
-;;
+
+
 ;; CCE is distributed in the hope that it will be useful, but WITHOUT ANY
 ;; WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
 ;; FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
 ;; details.
-;;
+
+
 ;; You should have received a copy of the GNU General Public License along with
 ;; CCE.  If not, see <http://www.gnu.org/licenses/>.
-;;------------------------------------------------------
+
+;; ------------------------------------------------------
 
 ;;; Commentary:
 
+;; * 说明文档                                                              :doc:
+;; 这个文件包含了与 quail/PY.el 文件内容相似的 "拼音-汉字" 对照表，
+;; 这个对照表用来实现拼音查询功能，即，查询某个汉字对应的拼音代码。
+
+;; 注意： 这个文件 *不用于* 输入法自定义词库！！！
+
+
 ;;; Code:
+
+;; * 代码                                                                 :code:
 ;; #+BEGIN_SRC emacs-lisp
 (defvar pyim-pinyin-pymap
   '(("a" "阿啊呵腌嗄锕吖")
@@ -440,17 +450,61 @@
     ("zui" "最罪嘴醉咀觜蕞")
     ("zun" "尊遵樽鳟撙")
     ("zuo" "作做坐座左昨琢佐凿撮柞嘬怍胙唑笮阼祚酢")))
+
+(defvar pyim-pinyin-pymap-index nil
+  "这个变量保存 `pyim-pinyin-pymap' 的索引，用于加快搜索速度。")
+
+(defun pyim-pinyin-pymap-index-charpy (&optional force)
+  "构建 pymap 的索引，用于加快搜索速度，这个函数
+将索引保存到 `pyim-pinyin-pymap-index' 变量中，
+如果 force 设置为 t, 强制更新索引。"
+  (when (or force (not pyim-pinyin-pymap-index))
+    (let ((index '("a" "ba" "ca" "da" "e" "fa" "ga"
+                   "ha" "ji" "ka" "la" "m" "n"
+                   "o" "pa" "qi" "ran" "sa" "ta"
+                   "wa" "xi" "ya" "za"))
+          (n 0) results)
+      (dolist (py pyim-pinyin-pymap)
+        (when (member (car py) index)
+          (push (cons (substring (car py) 0 1) n) results))
+        (setq n (+ n 1)))
+      (setq pyim-pinyin-pymap-index
+            (reverse results)))))
+
+(defun pyim-pinyin-pymap-get-pinyin-matched-char (pinyin &optional equal-match sort)
+  "获取拼音与 `pinyin' 想匹配的所有汉字，比如：
+
+“man” -> (\"忙茫盲芒氓莽蟒邙漭硭" "满慢漫曼蛮馒瞒蔓颟谩墁幔螨鞔鳗缦熳镘\")
+
+如果 `sort' 设置为 t, 则对结果按照字母顺序排序。"
+ (pyim-pinyin-pymap-index-charpy)
+ (let* ((pymap pyim-pinyin-pymap)
+        (length (length pymap))
+        (beg (substring pinyin 0 1))
+        (end (char-to-string (+ 1 (string-to-char beg))))
+        (beg-index (cdr (assoc beg pyim-pinyin-pymap-index)))
+        (end-index (cdr (assoc end pyim-pinyin-pymap-index)))
+        (n beg-index)
+        results)
+   (while n
+     (let ((element (nth n pymap)))
+       (when (if equal-match
+                 (equal pinyin (car element))
+               (pyim-string-match-p
+                (concat "^" pinyin) (car element)))
+         (push (car (cdr element)) results)))
+     (setq n (+ 1 n))
+     (when (> n (or end-index (- length 1)))
+       (setq n nil)))
+   (if sort
+       (nreverse results)
+     results)))
+
 ;; #+END_SRC
 
-;;; Footer:
+;; * Footer
 ;; #+BEGIN_SRC emacs-lisp
 (provide 'chinese-pyim-pymap)
-;; Local Variables:
-;; coding: utf-8-unix
-;; tab-width: 4
-;; indent-tabs-mode: nil
-;; lentic-init: lentic-orgel-org-init
-;; End:
 
 ;;; chinese-pyim-pymap.el ends here
 ;; #+END_SRC

@@ -12,7 +12,6 @@
     (with-current-buffer (find-file-existing path)
       (kill-buffer nil))))
 
-
 ;;------------------------------------------------------------------------------
 ;; Add support to package.el for pre-filtering available packages
 ;;------------------------------------------------------------------------------
@@ -67,7 +66,7 @@ ARCHIVE is the string name of the package archive.")
 ;; Un-comment below line if you download zip file
 ;; from https://github.com/redguardtoo/myelpa/archive/master.zip
 ;; and extract its content into ~/myelpa/
-;; (setq package-archives '(("myelpa" . "~/projs/myelpa")))
+;; (setq package-archives '(("myelpa" . "~/myelpa")))
 
 ;; Or Un-comment below line if you prefer installing package from https://github.com/redguardtoo/myelpa/ directly
 ;; (setq package-archives '(("myelpa" . "https://raw.github.com/redguardtoo/myelpa/master/")))
@@ -76,7 +75,6 @@ ARCHIVE is the string name of the package archive.")
 ;; Feel free to add more packages!
 (defvar melpa-include-packages
   '(bbdb
-    json-rpc
     kv
     color-theme
     wgrep
@@ -86,9 +84,9 @@ ARCHIVE is the string name of the package archive.")
     simple-httpd
     dsvn
     move-text
+    string-edit ; looks magnars don't update stable tag frequently
     findr
     mwe-log-commands
-    dired-details
     yaml-mode
     noflet
     db
@@ -99,7 +97,6 @@ ARCHIVE is the string name of the package archive.")
     pointback
     buffer-move
     regex-tool
-    csharp-mode
     quack
     legalese
     htmlize
@@ -114,7 +111,6 @@ ARCHIVE is the string name of the package archive.")
     dropdown-list
     lua-mode
     pomodoro
-    helm
     auto-compile
     packed
     gitconfig-mode
@@ -123,8 +119,6 @@ ARCHIVE is the string name of the package archive.")
     fakir
     erlang
     company-c-headers
-    company-anaconda
-    anaconda-mode
     ;; make all the color theme packages available
     afternoon-theme
     define-word
@@ -138,6 +132,7 @@ ARCHIVE is the string name of the package archive.")
     base16-theme
     basic-theme
     birds-of-paradise-plus-theme
+    workgroups2
     bliss-theme
     boron-theme
     bubbleberry-theme
@@ -153,7 +148,6 @@ ARCHIVE is the string name of the package archive.")
     color-theme-solarized
     colorsarenice-theme
     cyberpunk-theme
-    expand-region
     dakrone-theme
     darcula-theme
     dark-krystal-theme
@@ -166,6 +160,7 @@ ARCHIVE is the string name of the package archive.")
     firebelly-theme
     firecode-theme
     flatland-black-theme
+    pythonic
     flatland-theme
     flatui-theme
     gandalf-theme
@@ -205,7 +200,7 @@ ARCHIVE is the string name of the package archive.")
 (require-package 'color-theme)
 (require-package 'auto-compile)
 (require-package 'avy)
-(require-package 'expand-region) ;; use latest version if possible
+(require-package 'expand-region) ;; I prefer stable version
 (require-package 'fringe-helper)
 (require-package 'haskell-mode)
 (require-package 'gitignore-mode)
@@ -215,11 +210,13 @@ ARCHIVE is the string name of the package archive.")
 (require-package 'lua-mode)
 (require-package 'robe)
 (require-package 'inf-ruby)
+(require-package 'workgroups2)
 (require-package 'yaml-mode)
 (require-package 'paredit)
 (require-package 'erlang)
 (require-package 'findr)
 (require-package 'jump)
+(require-package 'nvm)
 (require-package 'writeroom-mode)
 (require-package 'haml-mode)
 (require-package 'sass-mode)
@@ -242,9 +239,11 @@ ARCHIVE is the string name of the package archive.")
 (require-package 'exec-path-from-shell)
 (require-package 'flymake-css)
 (require-package 'flymake-jslint)
-(require-package 'flymake-python-pyflakes)
 (require-package 'flymake-ruby)
 (require-package 'flymake-sass)
+(require-package 'swiper)
+(require-package 'find-file-in-project)
+(require-package 'elpy)
 (require-package 'hl-sexp)
 (require-package 'ibuffer-vc)
 (require-package 'less-css-mode)
@@ -256,7 +255,6 @@ ARCHIVE is the string name of the package archive.")
 (require-package 'rinari)
 (require-package 'groovy-mode)
 (require-package 'ruby-compilation)
-(require-package 'csharp-mode)
 (require-package 'emmet-mode)
 (require-package 'session)
 ;; (require-package 'tidy)
@@ -278,7 +276,6 @@ ARCHIVE is the string name of the package archive.")
 ;; C-x r l to list bookmarks
 (require-package 'bookmark+)
 (require-package 'multi-term)
-(require-package 'json-mode)
 (require-package 'js2-mode)
 (require-package 's)
 ;; js2-refactor requires js2, dash, s, multiple-cursors, yasnippet
@@ -286,24 +283,21 @@ ARCHIVE is the string name of the package archive.")
 (require-package 'multiple-cursors)
 (require-package 'tagedit)
 (require-package 'git-link)
+(require-package 'cliphist)
 (require-package 'yasnippet)
 (require-package 'company)
 (require-package 'company-c-headers)
 (require-package 'legalese)
 (require-package 'string-edit)
-(require-package 'dired-details)
 (require-package 'guide-key)
 (require-package 'fakir)
 (require-package 'simple-httpd)
+(require-package 'git-messenger)
 (require-package 'git-gutter)
 (require-package 'flx-ido)
 (require-package 'neotree)
 (require-package 'define-word)
-(require-package 'anaconda-mode)
-(require-package 'company-anaconda)
-
 (require-package 'quack) ;; for scheme
-
-;; (require-package 'command-frequency)
+(require-package 'hydra)
 
 (provide 'init-elpa)

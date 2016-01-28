@@ -1,10 +1,12 @@
 .depend
 pyim/
+anaconda-mode/
 .wg-file.el
 /url/cache
 /.emacs.desktop
 /auto-save-list
 /.session
+/session.*
 /custom.el
 *.elc
 company-statistics-cache.el

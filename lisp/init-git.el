@@ -1,9 +1,9 @@
 ;; Solution 1: disable all vc backends
 ;; @see http://stackoverflow.com/questions/5748814/how-does-one-disable-vc-git-in-emacs
-(setq vc-handled-backends ())
+;; (setq vc-handled-backends ())
 
 ;; ;; Solution 2: if NO network mounted drive involved
-;; (setq vc-handled-backends '(Git SVN Hg))
+(setq vc-handled-backends '(Git SVN Hg))
 
 ;; ;; Solution 3: setup vc-handled-backends per project
 ;; (setq vc-handled-backends ())
@@ -28,13 +28,12 @@
 
 (defun git-gutter-reset-to-head-parent()
   (interactive)
-  (let (parent)
+  (let (parent (filename (buffer-file-name)))
     (if (eq git-gutter:vcs-type 'svn)
         (setq parent "PREV")
-      (setq parent "HEAD^"))
+      (setq parent (if filename (concat (shell-command-to-string (concat "git --no-pager log --oneline -n1 --pretty='format:%H' " filename)) "^") "HEAD^")))
     (git-gutter:set-start-revision parent)
-    (message "git-gutter:set-start-revision parent of HEAD")
-    ))
+    (message "git-gutter:set-start-revision HEAD^")))
 
 (defun git-gutter-reset-to-default ()
   (interactive)
@@ -52,14 +51,8 @@
 
   (global-set-key (kbd "C-x C-g") 'git-gutter:toggle)
   (global-set-key (kbd "C-x v =") 'git-gutter:popup-hunk)
-
-  ;; Jump to next/previous hunk
-  (global-set-key (kbd "C-x p") 'git-gutter:previous-hunk)
-  (global-set-key (kbd "C-x n") 'git-gutter:next-hunk)
-
   ;; Stage current hunk
   (global-set-key (kbd "C-x v s") 'git-gutter:stage-hunk)
-
   ;; Revert current hunk
   (global-set-key (kbd "C-x v r") 'git-gutter:revert-hunk)
 ;; }}
@@ -153,7 +146,6 @@
     (git-gutter:previous-hunk arg)))
 
 ;; {{ git-messenger
-(autoload 'git-messenger:popup-message "git-messenger" "" t)
 ;; show details to play `git blame' game
 (setq git-messenger:show-detail t)
 (add-hook 'git-messenger:after-popup-hook
@@ -161,16 +153,11 @@
             ;; extract commit id and put into the kill ring
             (when (string-match "\\(commit *: *\\)\\([0-9a-z]+\\)" msg)
               (copy-yank-str (match-string 2 msg))
-              (message "commit hash => clipboard & kill-ring")
+              (message "commit hash %s => clipboard & kill-ring" (match-string 2 msg))
               )))
 (global-set-key (kbd "C-x v p") 'git-messenger:popup-message)
 ;; }}
 
-(setq cppcm-debug t)
-(setq cppcm-get-executable-full-path-callback
-          (lambda (path type tgt-name)
-            ;; extract commit id and put into the kill ring
-            (message "path=%s type=%s tgt-name=%s" path type tgt-name)))
 
 (provide 'init-git)
 
